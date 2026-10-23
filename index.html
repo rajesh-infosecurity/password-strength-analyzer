@@ -1,0 +1,242 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Password Strength Analyzer</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #eef2ff;
+      color: #172033;
+    }
+
+    .container {
+      max-width: 540px;
+      margin: 30px auto;
+      padding: 26px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 28px #17203312;
+    }
+
+    h1 { font-size: 26px; }
+
+    .subtitle, .note {
+      color: #596579;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+
+    .password-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    input {
+      min-width: 0;
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 12px 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #toggleButton { background: #e2e8f0; }
+
+    .meter {
+      height: 10px;
+      margin-top: 18px;
+      background: #e5e7eb;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    #meterFill {
+      width: 0;
+      height: 100%;
+      transition: width .2s;
+    }
+
+    #result { font-weight: bold; }
+
+    .suggestions {
+      padding: 14px 18px;
+      background: #f8fafc;
+      border-radius: 8px;
+      line-height: 1.6;
+    }
+
+    .note { font-size: 13px; }
+
+    @media (max-width: 420px) {
+      .container { padding: 18px; }
+      h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <h1>Password Strength Analyzer</h1>
+    <p class="subtitle">
+      Check password rules and get improvement suggestions.
+    </p>
+
+    <label for="password">Enter a sample password</label>
+
+    <div class="password-row">
+      <input id="password" type="password"
+        placeholder="Type a test password"
+        autocomplete="off" spellcheck="false">
+      <button id="toggleButton" type="button">Show</button>
+    </div>
+
+    <div class="meter">
+      <div id="meterFill"></div>
+    </div>
+
+    <p id="result" aria-live="polite">Strength: Not checked</p>
+
+    <h3>Improvement suggestions</h3>
+    <ul id="suggestions" class="suggestions">
+      <li>Enter a sample password to begin.</li>
+    </ul>
+
+    <p class="note">
+      Educational estimate only. This tool runs locally in your browser.
+      Never enter your real password.
+    </p>
+  </main>
+
+  <script>
+    const input = document.getElementById("password");
+    const toggle = document.getElementById("toggleButton");
+    const result = document.getElementById("result");
+    const meterFill = document.getElementById("meterFill");
+    const suggestions = document.getElementById("suggestions");
+
+    // Small demonstration list, not a complete password database.
+    const commonPasswords = [
+      "password",
+      "password123",
+      "12345678",
+      "qwerty123",
+      "admin123",
+      "letmein"
+    ];
+
+    function analyzePassword() {
+      const password = input.value;
+      const tips = [];
+
+      if (password.length === 0) {
+  result.textContent = "Strength: Not checked";
+  result.style.color = "#64748b";
+
+  meterFill.style.width = "0%";
+  meterFill.style.backgroundColor = "#cbd5e1";
+
+  showTips(["Enter a sample password to begin."]);
+  return;
+}
+      const checks = {
+        length: password.length >= 12,
+        lowercase: /[a-z]/.test(password),
+        uppercase: /[A-Z]/.test(password),
+        number: /[0-9]/.test(password),
+        symbol: /[^A-Za-z0-9]/.test(password)
+      };
+
+      if (!checks.length) tips.push("Use at least 12 characters.");
+      if (!checks.lowercase) tips.push("Add a lowercase letter (a-z).");
+      if (!checks.uppercase) tips.push("Add an uppercase letter (A-Z).");
+      if (!checks.number) tips.push("Add a number (0-9).");
+      if (!checks.symbol) tips.push("Consider adding a symbol.");
+
+      const normalized = password.toLowerCase();
+      const isCommon = commonPasswords.includes(normalized);
+      const hasCommonPattern = /password|qwerty|1234|abcd/i.test(password);
+
+      if (isCommon) {
+        tips.push("Warning: This matches a common password in our small demo list. Choose a different, unique password.");
+      } else if (hasCommonPattern) {
+        tips.push("Avoid predictable words or sequences such as 'password', '1234', or 'abcd'.");
+      }
+
+      
+      const score = Object.values(checks).filter(Boolean).length;
+      let label;
+      let color;
+      let percent;
+
+      if (password.length < 8 || score <= 1 || isCommon || hasCommonPattern) {
+        label = "Weak";
+        color = "#dc2626";
+        percent = 20;
+      } else if (score <= 3) {
+        label = "Medium";
+        color = "#d97706";
+        percent = 50;
+      } else if (score === 4) {
+        label = "Good";
+        color = "#2563eb";
+        percent = 75;
+      } else {
+        label = "Strong (basic checks)";
+        color = "#16a34a";
+        percent = 100;
+      }
+
+      result.textContent = "Strength: " + label;
+      result.style.color = color;
+      meterFill.style.backgroundColor = color;
+      meterFill.style.width = percent + "%";
+
+      if (tips.length === 0) {
+        tips.push("All basic checks passed. Make sure the password is unique and not based on personal information.");
+      }
+
+      showTips(tips);
+    }
+
+
+    function showTips(tips) {
+      suggestions.replaceChildren();
+
+      tips.forEach((tip) => {
+        const item = document.createElement("li");
+        item.textContent = tip;
+        suggestions.appendChild(item);
+      });
+    }
+
+    input.addEventListener("input", analyzePassword);
+
+    toggle.addEventListener("click", () => {
+      const show = input.type === "password";
+      input.type = show ? "text" : "password";
+      toggle.textContent = show ? "Hide" : "Show";
+    });
+  </script>
+</body>
+</html>
